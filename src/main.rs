@@ -27,7 +27,7 @@ impl Category for Example {
 }
 
 fn main() {
-    let category = PythonCategory::new("test");
+    let category = PythonCategory::new("test").unwrap();
 
     println!("{:?}", category.name());
 

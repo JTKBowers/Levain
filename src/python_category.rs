@@ -8,7 +8,8 @@ use crate::category::Category;
 pub enum PythonError {
     InternalError,
     ScriptError,
-    IncorrectReturnType(&'static str)
+    IncorrectReturnType(&'static str),
+    MiscError(&'static str)
 }
 
 impl From<PyErr> for PythonError {
@@ -20,31 +21,35 @@ impl From<PyErr> for PythonError {
     }
 }
 
+impl From<std::io::Error> for PythonError {
+    fn from(_: std::io::Error) -> PythonError {
+        PythonError::MiscError("Could not get the current directory!")
+    }
+}
+
 pub struct PythonCategory {
     module_object: PyObject
 }
 
 impl PythonCategory {
-    pub fn new(module_name: &str) -> PythonCategory {
+    pub fn new(module_name: &str) -> Result<PythonCategory, PythonError> {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        let syspath: &PyList = py.import("sys")
-            .unwrap()
-            .get("path")
-            .unwrap()
+        let syspath: &PyList = py.import("sys")?
+            .get("path")?
             .try_into()
-            .unwrap();
+            .map_err(|_| PythonError::IncorrectReturnType("sys.path should be a list!"))?;
 
-        let cwd = std::env::current_dir().unwrap();
+        let cwd = std::env::current_dir()?;
 
-        syspath.insert(0, cwd.to_str().unwrap()).unwrap();
+        syspath.insert(0, cwd.to_str().unwrap())?;
 
-        let module = py.import(module_name).unwrap();
+        let module = py.import(module_name)?;
 
-        PythonCategory{
+        Ok(PythonCategory{
             module_object: module.to_object(py)
-        }
+        })
     }
 }
 
