@@ -1,5 +1,8 @@
 mod category;
+mod python_category;
+
 use crate::category::Category;
+use crate::python_category::PythonCategory;
 
 struct Example;
 
@@ -24,9 +27,12 @@ impl Category for Example {
 }
 
 fn main() {
-    let category = Example{};
+    let category = PythonCategory::new("test");
+
+    println!("{:?}", category.name());
 
     for c in category.get_entries().unwrap().into_iter() {
+        category.launch(&c).unwrap();
         println!("{:?}", c);
     }
 }
