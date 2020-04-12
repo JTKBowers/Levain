@@ -4,6 +4,22 @@ use pyo3::prelude::*;
 
 use crate::category::Category;
 
+#[derive(Debug)]
+pub enum PythonError {
+    InternalError,
+    ScriptError,
+    IncorrectReturnType
+}
+
+impl From<PyErr> for PythonError {
+    fn from(e: PyErr) -> PythonError {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        e.print(py);
+        PythonError::ScriptError
+    }
+}
+
 pub struct PythonCategory {
     module_object: PyObject
 }
@@ -33,33 +49,41 @@ impl PythonCategory {
 }
 
 impl Category for PythonCategory {
-    type Error = ();
+    type Error = PythonError;
 
-    fn name(&self) -> Result<String, ()> {
+    fn name(&self) -> Result<String, PythonError> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        let module = self.module_object.cast_as::<PyModule>(py).unwrap();
+        let module = self.module_object
+            .cast_as::<PyModule>(py)
+            .map_err(|_| PythonError::InternalError)?;
 
-        let name_any = module.call1("get_name", ()).unwrap();
+        let name_any = module.call1("get_name", ())?;
 
-        let name = name_any.downcast::<PyString>().unwrap();
+        let name = name_any
+            .downcast::<PyString>()
+            .map_err(|_| PythonError::IncorrectReturnType)?;
 
         Ok(name.to_string().unwrap().to_string())
     }
 
-    fn get_entries(&self) -> Result<Vec<String>, ()> {
+    fn get_entries(&self) -> Result<Vec<String>, PythonError> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        let module = self.module_object.cast_as::<PyModule>(py).unwrap();
+        let module = self.module_object
+            .cast_as::<PyModule>(py)
+            .map_err(|_| PythonError::InternalError)?;
 
-        let entries_any = module.call1("get_entries", ()).unwrap();
+        let entries_any = module.call1("get_entries", ())?;
 
-        let entries_list = entries_any.downcast::<PyList>().unwrap();
+        let entries_list = entries_any.downcast::<PyList>()
+            .map_err(|_| PythonError::IncorrectReturnType)?;
 
         let mut entries = Vec::new();
 
         for entry_any in entries_list.iter() {
-            let entry = entry_any.downcast::<PyString>().unwrap();
+            let entry = entry_any.downcast::<PyString>()
+                .map_err(|_| PythonError::IncorrectReturnType)?;
 
             entries.push(entry.to_string().unwrap().to_string());
         }
@@ -67,14 +91,16 @@ impl Category for PythonCategory {
         Ok(entries)
     }
 
-    fn launch(&self, entry: &String) -> Result<(), ()> {
+    fn launch(&self, entry: &String) -> Result<(), PythonError> {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        let module = self.module_object.cast_as::<PyModule>(py).unwrap();
+        let module = self.module_object
+            .cast_as::<PyModule>(py)
+            .map_err(|_| PythonError::InternalError)?;
 
         let entry_py = PyString::new(py, entry);
 
-        module.call1("launch_entry", (entry_py,)).unwrap();
+        module.call1("launch_entry", (entry_py,))?;
 
         Ok(())
     }
