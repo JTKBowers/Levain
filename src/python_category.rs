@@ -8,7 +8,7 @@ use crate::category::Category;
 pub enum PythonError {
     InternalError,
     ScriptError,
-    IncorrectReturnType
+    IncorrectReturnType(&'static str)
 }
 
 impl From<PyErr> for PythonError {
@@ -62,7 +62,7 @@ impl Category for PythonCategory {
 
         let name = name_any
             .downcast::<PyString>()
-            .map_err(|_| PythonError::IncorrectReturnType)?;
+            .map_err(|_| PythonError::IncorrectReturnType("The category name must be a string"))?;
 
         Ok(name.to_string().unwrap().to_string())
     }
@@ -77,13 +77,13 @@ impl Category for PythonCategory {
         let entries_any = module.call1("get_entries", ())?;
 
         let entries_list = entries_any.downcast::<PyList>()
-            .map_err(|_| PythonError::IncorrectReturnType)?;
+            .map_err(|_| PythonError::IncorrectReturnType("You must return a list of entries"))?;
 
         let mut entries = Vec::new();
 
         for entry_any in entries_list.iter() {
             let entry = entry_any.downcast::<PyString>()
-                .map_err(|_| PythonError::IncorrectReturnType)?;
+                .map_err(|_| PythonError::IncorrectReturnType("Each entry must be a string"))?;
 
             entries.push(entry.to_string().unwrap().to_string());
         }
