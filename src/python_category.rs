@@ -42,8 +42,9 @@ impl PythonCategory {
             .map_err(|_| PythonError::IncorrectReturnType("sys.path should be a list!"))?;
 
         let cwd = std::env::current_dir()?;
+        let cwd = cwd.to_str().ok_or(PythonError::MiscError("No working directory found"))?;
 
-        syspath.insert(0, cwd.to_str().unwrap())?;
+        syspath.insert(0, cwd)?;
 
         let module = py.import(module_name)?;
 
@@ -69,7 +70,7 @@ impl Category for PythonCategory {
             .downcast::<PyString>()
             .map_err(|_| PythonError::IncorrectReturnType("The category name must be a string"))?;
 
-        Ok(name.to_string().unwrap().to_string())
+        Ok(name.to_string()?.to_string())
     }
 
     fn get_entries(&self) -> Result<Vec<String>, PythonError> {
@@ -90,7 +91,7 @@ impl Category for PythonCategory {
             let entry = entry_any.downcast::<PyString>()
                 .map_err(|_| PythonError::IncorrectReturnType("Each entry must be a string"))?;
 
-            entries.push(entry.to_string().unwrap().to_string());
+            entries.push(entry.to_string()?.to_string());
         }
 
         Ok(entries)
